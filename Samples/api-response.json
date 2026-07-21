@@ -1,0 +1,14 @@
+{
+  "organization_id": "DEMO-001",
+  "classification": "standard",
+  "questions": [
+    {
+      "question_id": 1,
+      "question": "¿El documento contiene la aprobación correspondiente?",
+      "document": {
+        "file_name": "sample-document.pdf",
+        "available": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+credentials.json
+service-account.json
+
+# n8n local data
+.n8n/
+n8n_data/
+database.sqlite
+executions/
+binaryData/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log
+logs/
+
+# Editors
+.vscode/
+.idea/
+
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# Private test data
+samples/private/
+data/private/
+documents/private/

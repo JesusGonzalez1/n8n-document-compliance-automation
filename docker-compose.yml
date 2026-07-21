@@ -1,0 +1,22 @@
+services:
+  n8n:
+    image: n8nio/n8n:${N8N_VERSION}
+    container_name: n8n-document-demo
+    restart: unless-stopped
+
+    ports:
+      - "5678:5678"
+
+    environment:
+      TZ: ${TZ}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

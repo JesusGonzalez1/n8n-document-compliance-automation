@@ -1,0 +1,260 @@
+{
+  "name": "Document Compliance Automation - Public Demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8f45a096-d27e-4738-bb48-c391030f40fa",
+      "name": "01 - Start Demo",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7a9c5375-52a4-42c9-8a31-a5f19cc05727",
+              "name": "organization_id",
+              "value": "DEMO-001",
+              "type": "string"
+            },
+            {
+              "id": "a089718f-c769-4705-8d32-45c992e60ada",
+              "name": "requested_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "ac8e4af4-2330-4071-91d8-5d835ceb0dd0",
+              "name": "environment",
+              "value": "public_portfolio_demo",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5999d10e-c517-496e-b1fd-71906e5d9a2b",
+      "name": "02 - Create Synthetic Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -720,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulates the response that would normally come from a REST API.\n// All information is synthetic and safe for a public repository.\n\nconst input = $input.first().json;\n\nreturn [\n  {\n    json: {\n      organization_id: input.organization_id,\n      requested_at: input.requested_at,\n      classification: \"standard\",\n      report_id: \"REPORT-DEMO-001\",\n      questions: [\n        {\n          question_id: 101,\n          question: \"Does the document identify the responsible person?\",\n          minimum_classification: \"basic\",\n          document_reference: \"DOC-DEMO-001\"\n        },\n        {\n          question_id: 102,\n          question: \"Does the document contain the required approval or signature?\",\n          minimum_classification: \"standard\",\n          document_reference: \"DOC-DEMO-002\"\n        },\n        {\n          question_id: 103,\n          question: \"Is the supporting document available and readable?\",\n          minimum_classification: \"standard\",\n          document_reference: null\n        },\n        {\n          question_id: 104,\n          question: \"Does the document include an advanced risk assessment?\",\n          minimum_classification: \"advanced\",\n          document_reference: \"DOC-DEMO-004\"\n        }\n      ]\n    }\n  }\n];"
+      },
+      "id": "564158d2-43a6-48db-a45a-66b822795447",
+      "name": "03 - Simulate REST API Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Selects the questions that apply to the organization's classification.\n// The node returns one item per question, which represents batch processing.\n\nconst rank = {\n  basic: 1,\n  standard: 2,\n  advanced: 3\n};\n\nconst source = $input.first().json;\nconst currentRank = rank[source.classification] ?? 0;\n\nreturn source.questions\n  .filter((question) => {\n    const requiredRank = rank[question.minimum_classification] ?? 999;\n    return requiredRank <= currentRank;\n  })\n  .map((question) => ({\n    json: {\n      organization_id: source.organization_id,\n      report_id: source.report_id,\n      classification: source.classification,\n      ...question\n    }\n  }));"
+      },
+      "id": "47624a81-a275-4cb9-90ac-131530301d28",
+      "name": "04 - Select Applicable Questions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulates document retrieval.\n// In production, this step would be replaced by an authenticated HTTP Request.\n\nreturn $input.all().map((item) => {\n  const data = item.json;\n  const available = Boolean(data.document_reference);\n\n  return {\n    json: {\n      ...data,\n      document: {\n        available,\n        reference: data.document_reference,\n        file_name: available\n          ? `sample-document-${data.question_id}.pdf`\n          : null,\n        mime_type: available ? \"application/pdf\" : null,\n        source: \"synthetic_demo\"\n      }\n    }\n  };\n});"
+      },
+      "id": "b133cf7e-516d-47f3-b4dc-bbae4d038785",
+      "name": "05 - Simulate Document Retrieval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulates the structured response of a document-analysis model.\n// No external AI service or credential is used in this public demo.\n\nconst demoResults = {\n  101: {\n    corresponds: true,\n    complies: true,\n    observation: \"The document identifies the responsible person.\"\n  },\n  102: {\n    corresponds: true,\n    complies: false,\n    observation: \"The document is relevant, but the required signature is missing.\"\n  }\n};\n\nreturn $input.all().map((item) => {\n  const data = item.json;\n\n  if (!data.document.available) {\n    return {\n      json: {\n        ...data,\n        analysis: {\n          corresponds: false,\n          complies: false,\n          observation: \"No supporting document was available for automated analysis.\",\n          requires_manual_review: true,\n          model: \"simulated-document-analysis\"\n        }\n      }\n    };\n  }\n\n  const result = demoResults[data.question_id] ?? {\n    corresponds: true,\n    complies: true,\n    observation: \"The synthetic document satisfies the configured demo rule.\"\n  };\n\n  return {\n    json: {\n      ...data,\n      analysis: {\n        ...result,\n        requires_manual_review: false,\n        model: \"simulated-document-analysis\"\n      }\n    }\n  };\n});"
+      },
+      "id": "fd68ca7a-6f7a-49bc-9c94-c130ecd4d274",
+      "name": "06 - Simulate Document AI Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validates and normalizes the output before persistence.\n// It limits observations and sends invalid results to manual review.\n\nreturn $input.all().map((item) => {\n  const data = item.json;\n  const analysis = data.analysis ?? {};\n\n  const validBooleans =\n    typeof analysis.corresponds === \"boolean\" &&\n    typeof analysis.complies === \"boolean\";\n\n  const rawObservation =\n    typeof analysis.observation === \"string\"\n      ? analysis.observation.trim()\n      : \"\";\n\n  const observation = rawObservation.slice(0, 150);\n\n  return {\n    json: {\n      execution_id: `EXEC-${data.organization_id}-${data.question_id}`,\n      organization_id: data.organization_id,\n      report_id: data.report_id,\n      classification: data.classification,\n      question_id: data.question_id,\n      question: data.question,\n      document_available: data.document.available,\n      document_name: data.document.file_name,\n      corresponds: validBooleans ? analysis.corresponds : false,\n      complies: validBooleans ? analysis.complies : false,\n      observation: observation || \"Invalid or empty analysis response.\",\n      requires_manual_review:\n        Boolean(analysis.requires_manual_review) || !validBooleans,\n      processed_at: new Date().toISOString(),\n      workflow_version: \"1.0.0-demo\"\n    }\n  };\n});"
+      },
+      "id": "b479d126-f41f-4819-9b9c-feb17a8b94ca",
+      "name": "07 - Validate and Normalize Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Produces the final object that would normally be stored in Google Sheets,\n// a database, or another corporate application.\n\nconst rows = $input.all().map((item) => item.json);\n\nreturn [\n  {\n    json: {\n      status: \"completed\",\n      summary: {\n        processed_questions: rows.length,\n        compliant_results: rows.filter((row) => row.complies).length,\n        non_compliant_results: rows.filter((row) => !row.complies).length,\n        manual_review_items: rows.filter(\n          (row) => row.requires_manual_review\n        ).length\n      },\n      results: rows\n    }\n  }\n];"
+      },
+      "id": "b2158269-dd3e-4fb9-ab6f-2606feef748e",
+      "name": "08 - Build Final Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Public portfolio demo\nThis workflow was rebuilt from scratch using synthetic data.\n\n- No credentials\n- No private URLs\n- No customer data\n- No production document identifiers",
+        "height": 220,
+        "width": 360,
+        "color": 5
+      },
+      "id": "974e7948-55eb-464a-b116-f92d8e8d39af",
+      "name": "Security Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Production replacement points\nReplace the simulated API and document retrieval nodes with authorized HTTP Request nodes. Configure authentication only inside the private n8n instance.",
+        "height": 200,
+        "width": 360,
+        "color": 4
+      },
+      "id": "8eac48d0-a80b-400d-867c-3c43f0ec3e6c",
+      "name": "Integration Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Output\nThe last node produces structured results suitable for Google Sheets, SQL, an ERP, or another application.",
+        "height": 160,
+        "width": 320,
+        "color": 3
+      },
+      "id": "1661a3ad-bc5e-4877-8174-d3418223b517",
+      "name": "Output Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -120
+      ]
+    }
+  ],
+  "connections": {
+    "01 - Start Demo": {
+      "main": [
+        [
+          {
+            "node": "02 - Create Synthetic Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Create Synthetic Input": {
+      "main": [
+        [
+          {
+            "node": "03 - Simulate REST API Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Simulate REST API Response": {
+      "main": [
+        [
+          {
+            "node": "04 - Select Applicable Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Select Applicable Questions": {
+      "main": [
+        [
+          {
+            "node": "05 - Simulate Document Retrieval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Simulate Document Retrieval": {
+      "main": [
+        [
+          {
+            "node": "06 - Simulate Document AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Simulate Document AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "07 - Validate and Normalize Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Validate and Normalize Results": {
+      "main": [
+        [
+          {
+            "node": "08 - Build Final Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

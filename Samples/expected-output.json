@@ -1,0 +1,8 @@
+{
+  "organization_id": "DEMO-001",
+  "question_id": 1,
+  "corresponds": true,
+  "complies": true,
+  "observation": "El documento contiene la aprobación requerida.",
+  "requires_manual_review": false
+}
